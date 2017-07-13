@@ -1,0 +1,4 @@
+syntax: glob
+vsproj/.vs/
+vsproj/Release/
+src/*.o
