@@ -665,14 +665,14 @@ void write_pfm_file(FILE *f, float *img_out, char *img_out_fname,
   int img_type, int endianess)
 {
   int i, j, x_scaled_size, y_scaled_size;
-  int swap = (endianess == 1) ? 0 : 1;
-  float fendian = (endianess == 1) ? +1.0 : -1.0;
+  int swap = (endianess == 1) ? 1 : 0;
+  int fendian = (endianess == 1) ? +1 : -1;
   
   x_scaled_size = x_size;
   y_scaled_size = y_size;
 
   /* Write a comment containing the file name. */
-  fprintf(f, "# %s\n", img_out_fname);
+  //fprintf(f, "# %s\n", img_out_fname);
   /* Write the magic number string. */
   if (img_type == RGB_TYPE) {
     fprintf(f, "PF\n");
@@ -685,7 +685,7 @@ void write_pfm_file(FILE *f, float *img_out, char *img_out_fname,
   /* Write the image dimensions. */
   fprintf(f, "%d %d\n", x_scaled_size, y_scaled_size);
   /* Write the endianess/scale factor as float. */
-  fprintf(f, "%f\n", fendian);
+  fprintf(f, "%d\n", fendian);
   
   /* Write the image data. */
   for (i = 0; i < y_scaled_size; i++) {
