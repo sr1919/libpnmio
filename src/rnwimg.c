@@ -30,18 +30,15 @@
 #define  XDIM_DEFAULT     256
 #define  YDIM_DEFAULT     256
 #define  PFM_SCALE        1.0
-#define  MAXLINE         1024
 
 int copied_imgin_file_name=0, copied_imgout_file_name=0;
 int enable_pbm=0, enable_ppm=0, enable_pgm=0, enable_pfm=0;
 int enable_ascii=0, enable_binary=0;
-int enable_rgb=0, enable_greyscale=0;
+int enable_rgb=0, enable_greyscale=0, enable_invert = 0;
 int img_colors=1, img_type, endianess;
 char *imgin_file_name, *imgout_file_name;
 FILE *imgin_file, *imgout_file;
-//
 int x_dim=XDIM_DEFAULT, y_dim=YDIM_DEFAULT;
-
 
 /* print_usage:
  * Print usage instructions for the "rnwimg" program.
@@ -54,6 +51,9 @@ static void print_usage()
   printf("* \n");
   printf("* Options:\n");
   printf("*   -h:              Print this help.\n");
+  printf("*   -iraw:           Input image is raw file.\n");
+  printf("*   -x <num>:        Width of input image(raw file only).\n");
+  printf("*   -y <num>:        Height of input image(raw file only).\n");
   printf("*   -i <infile>:     Read input from file <infile>.\n");
   printf("*   -o <outfile>:    Write output to file <outfile>.\n");
   printf("* \n");
@@ -66,8 +66,8 @@ static void print_usage()
  */
 int main(int argc, char **argv)
 {
-  int *img_data;
-  float *pfm_data;
+  int *img_data = 0;
+  float *pfm_data = 0;
   int i=0;
   int pnm_type=0;
 
@@ -81,7 +81,11 @@ int main(int argc, char **argv)
     if (strcmp("-h", argv[i]) == 0) {
       print_usage();
       exit(1);
-    } else if (strcmp("-i", argv[i]) == 0) {
+    } else if (strcmp("-invert", argv[i]) == 0) {
+        enable_invert = 1;
+    } else if (strcmp("-iraw", argv[i]) == 0) {
+        pnm_type = RAW;
+	} else if (strcmp("-i", argv[i]) == 0) {
       if ((i+1) < argc) {
         i++;
         imgin_file_name = malloc((strlen(argv[i]) + 1) * sizeof(char));
@@ -94,7 +98,17 @@ int main(int argc, char **argv)
         imgout_file_name = malloc((strlen(argv[i]) + 1) * sizeof(char));
         strcpy(imgout_file_name, argv[i]);
         copied_imgout_file_name = 1;
-      }        
+      }
+    } else if (strcmp("-x", argv[i]) == 0) {
+      if ((i + 1) < argc) {
+        i++;
+        x_dim = atoi(argv[i]);
+      }
+    } else if (strcmp("-y", argv[i]) == 0) {
+      if ((i + 1) < argc) {
+        i++;
+        y_dim = atoi(argv[i]);
+      }
     } else {
       fprintf(stderr, "Error: Unknown command-line option.\n");
       exit(1);
@@ -110,18 +124,21 @@ int main(int argc, char **argv)
       } 
     } else {
       if ((imgin_file = fopen(imgin_file_name,"rb")) == NULL) {
-        fprintf(stderr, "Error: Can't open the specified input file.\n");
+        fprintf(stderr, "Error: Can't open the specified input file: %s\n", imgin_file_name);
         exit(1);
       } 
     }
   }
 
   /* Get the PNM/PFM image type. */
-  pnm_type = get_pnm_type(imgin_file);
+  if (pnm_type == 0) {
+    pnm_type = get_pnm_type(imgin_file);
+  }
   fprintf(stderr, "Info: pnm_type = %d\n", pnm_type);
   rewind(imgin_file);
 
   /* Read the image file header (the input file has been rewinded). */
+  enable_pfm = 1;
   if ((pnm_type == PBM_ASCII) || (pnm_type == PBM_BINARY)) {
     read_pbm_header(imgin_file, &x_dim, &y_dim, &enable_ascii);
   } else if ((pnm_type == PGM_ASCII) || (pnm_type == PGM_BINARY)) {
@@ -131,7 +148,12 @@ int main(int argc, char **argv)
   } else if ((pnm_type == PFM_RGB) || (pnm_type == PFM_GREYSCALE)) {
     read_pfm_header(imgin_file, &x_dim, &y_dim, &img_type, &endianess);    
     enable_pfm = 1;
-  } else {    
+  } else if (pnm_type == RAW) {
+      if (x_dim == 0 || y_dim == 0) {
+        fprintf(stderr, "Error: wrong image size for raw file: x=%d, y=%d\n", x_dim, y_dim);
+        exit(1);
+      }
+  } else {
     fprintf(stderr, "Error: Unknown PNM/PFM image format. Exiting...\n");
     exit(1);
   }
@@ -158,6 +180,8 @@ int main(int argc, char **argv)
     pfm_data = malloc((x_dim * y_dim) * sizeof(float));      
   } else if ((pnm_type == PPM_ASCII) || (pnm_type == PPM_BINARY)) {
     img_data = malloc((3 * x_dim * y_dim) * sizeof(int));
+  } else if (pnm_type == RAW) {
+      img_data = malloc((x_dim * y_dim) * sizeof(uint16_t));
   } else {
     img_data = malloc((x_dim * y_dim) * sizeof(int));
   }
@@ -165,6 +189,8 @@ int main(int argc, char **argv)
   /* Read the image data. */
   if ((pnm_type == PBM_ASCII) || (pnm_type == PBM_BINARY)) {
     read_pbm_data(imgin_file, img_data, enable_ascii);
+  } else if (pnm_type == RAW) {
+     read_raw_data(imgin_file, img_data/*, x_dim, y_dim*/);
   } else if ((pnm_type == PGM_ASCII) || (pnm_type == PGM_BINARY)) {
     read_pgm_data(imgin_file, img_data, enable_ascii);
   } else if ((pnm_type == PPM_ASCII) || (pnm_type == PPM_BINARY)) {
@@ -173,23 +199,25 @@ int main(int argc, char **argv)
     read_pfm_data(imgin_file, pfm_data, img_type, endianess);    
   }
 
+  /* Convert img data */
+  if (enable_invert || pnm_type == RAW) {
+    pfm_data = malloc((x_dim * y_dim) * sizeof(float));
+    convert_img_data(img_data, pfm_data, x_dim, y_dim, enable_invert, PX_SIZE_WORD);
+  }
+
   /* Write the output image file. */
-  if ((pnm_type == PBM_ASCII) || (pnm_type == PBM_BINARY)) {
-    write_pbm_file(imgout_file, img_data, imgout_file_name, 
-      x_dim, y_dim, 1, 1, 32, enable_ascii
-    );
+  if (enable_pfm == 1) {
+    write_pfm_file(imgout_file, pfm_data, imgout_file_name,
+      x_dim, y_dim, img_type, endianess);
+  } else if ((pnm_type == PBM_ASCII) || (pnm_type == PBM_BINARY)) {
+    write_pbm_file(imgout_file, img_data, imgout_file_name,
+      x_dim, y_dim, 1, 1, 32, enable_ascii);
   } else if ((pnm_type == PGM_ASCII) || (pnm_type == PGM_BINARY)) {
     write_pgm_file(imgout_file, img_data, imgout_file_name,
-      x_dim, y_dim, 1, 1, img_colors, 16, enable_ascii
-    );
+      x_dim, y_dim, 1, 1, img_colors, 16, enable_ascii);
   } else if ((pnm_type == PPM_ASCII) || (pnm_type == PPM_BINARY)) {
     write_ppm_file(imgout_file, img_data, imgout_file_name,
-      x_dim, y_dim, 1, 1, img_colors, enable_ascii
-    );
-  } else if (enable_pfm == 1) {
-    write_pfm_file(imgout_file, pfm_data, imgout_file_name,
-      x_dim, y_dim, img_type, endianess
-    );
+      x_dim, y_dim, 1, 1, img_colors, enable_ascii);
   }
 
   if (enable_pfm == 1) {
