@@ -36,6 +36,9 @@
                             /* 8-15: reserved */
 #define PFM_RGB          16 /* F */
 #define PFM_GREYSCALE    17 /* f */
+#define RAW              20 /* raw uint16 */
+#define PX_SIZE_BYTE      1 /* uint8 */
+#define PX_SIZE_WORD      2 /* uint16 */
 
 #define IS_BIGENDIAN(x)   ((*(char*)&x) == 0)
 #define IS_LITTLE_ENDIAN  (1 == *(unsigned char *)&(const int){1})
@@ -71,6 +74,9 @@ void write_ppm_file(FILE *f, int *img_out, char *img_out_fname,
        int img_colors, int is_ascii);
 void write_pfm_file(FILE *f, float *img_out, char *img_out_fname, 
        int x_size, int y_size, int img_type, int endianess);
+void convert_img_data(const void *img_in, float *img_out,
+    const int x_size, const int y_size, const int invert,
+    const short inp_px_size);
 
 /* Helper/auxiliary functions. */
 int   ReadFloat(FILE *fptr, float *f, int swap);

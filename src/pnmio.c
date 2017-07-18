@@ -467,6 +467,43 @@ void read_pfm_data(FILE *f, float *img_in, int img_type, int endianess)
   fclose(f);
 }
 
+uint16_t pixel(void* img, const int idx, const int px_size) {
+    uint16_t px = 0;
+    if (px_size == PX_SIZE_WORD) {
+        uint16_t* img16b = (uint16_t*)img;
+        px = img16b[idx];
+    }
+    else {
+        uint16_t* img8b = (uint16_t*)img;
+        px = img8b[idx];
+    }
+    return px;
+};
+
+/* convert_img_data:
+ * Convert int (0..UINT16_MAX) img data to float with optional inversion
+ */
+void convert_img_data(const void *img_in, float *img_out,
+    const int x_size, const int y_size, const int invert,
+    const short inp_px_size)
+{
+    uint16_t max_gr = UINT8_MAX;
+    if (inp_px_size == PX_SIZE_WORD)
+        max_gr = UINT16_MAX;
+
+    for (int i = 0; i < y_size; i++) {
+        for (int j = 0; j < x_size; j++) {
+            const int idx = i*x_size + j;
+            int px = pixel(img_in, idx, inp_px_size);
+            if (invert) {
+                px = max_gr - px;
+                if (px < 0) px = 0;
+            }
+            img_out[idx] = px;
+        }
+    }
+}
+
 /* write_pbm_file:
  * Write the contents of a PBM (portable bit map) file.
  */
