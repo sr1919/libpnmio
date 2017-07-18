@@ -52,6 +52,7 @@
 
 /* PNM/PFM API. */
 int  get_pnm_type(FILE *f);
+void read_raw_data(FILE *f, void *img_data);
 void read_pbm_header(FILE *f, int *img_xdim, int *img_ydim, int *is_ascii);
 void read_pgm_header(FILE *f, int *img_xdim, int *img_ydim, int *img_colors, 
        int *is_ascii);

@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdint.h>
 #include <math.h>
 #include "pnmio.h"
 
@@ -56,7 +57,7 @@ int get_pnm_type(FILE *f)
   unsigned int i;
   char magic[MAXLINE];
   char line[MAXLINE];
- 
+
   /* Read the PNM/PFM file header. */
   while (fgets(line, MAXLINE, f) != NULL) {
     flag = 0;
@@ -365,6 +366,26 @@ void read_pfm_header(FILE *f, int *img_xdim, int *img_ydim, int *img_type, int *
   } else {
     *endianess = -1;
   }
+}
+
+/* read_raw_data:
+ * Read the data contents of a RAW (uint16) file.
+ */
+void read_raw_data(FILE *f, void *img_data)
+{
+  int i = 0, c;
+  int swap = 0; // (endianess == 1) ? 0 : 1;
+  uint16_t val;
+  uint16_t *img = (uint16_t *)img_data;
+
+  /* Read the rest of the RAW file. */
+  while ((c = fgetc(f)) != EOF) {
+    ungetc(c, f);
+    /* Read a possibly byte-swapped float. */
+    ReadUint16(f, &val, swap);
+    img[i++] = val;
+  }
+  fclose(f);
 }
 
 /* read_pbm_data:
@@ -680,6 +701,28 @@ void write_pfm_file(FILE *f, float *img_out, char *img_out_fname,
   }  
   fclose(f);
 }
+
+/* ReadUint16:
+ * Read unsigned int number.
+ */
+int ReadUint16(FILE *fptr, uint16_t *w, const int swap)
+{
+    //unsigned char *cptr, tmp;
+    if (fread(w, sizeof(uint16_t), 1, fptr) != 1) {
+        return (FALSE);
+    }
+    //if (swap) {
+    //    cptr = (unsigned char *)f;
+    //    tmp = cptr[0];
+    //    cptr[0] = cptr[3];
+    //    cptr[3] = tmp;
+    //    tmp = cptr[1];
+    //    cptr[1] = cptr[2];
+    //    cptr[2] = tmp;
+    //}
+    return (TRUE);
+}
+
 
 /* ReadFloat:
  * Read a possibly byte swapped floating-point number.
