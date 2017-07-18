@@ -220,13 +220,9 @@ int main(int argc, char **argv)
       x_dim, y_dim, 1, 1, img_colors, enable_ascii);
   }
 
-  if (enable_pfm == 1) {
-    free(pfm_data);
-  } else if (pnm_type == PBM_ASCII || pnm_type == PBM_BINARY ||
-    pnm_type == PGM_ASCII || pnm_type == PGM_BINARY || 
-    pnm_type == PPM_ASCII || pnm_type == PPM_BINARY) {
-    free(img_data);
-  }
+  //    simplify deallocation
+  free(pfm_data);
+  free(img_data);
   free(imgin_file_name);
 
   return 0;
